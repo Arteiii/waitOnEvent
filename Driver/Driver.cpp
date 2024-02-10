@@ -12,10 +12,11 @@ _Function_class_(KSTART_ROUTINE) void EventThreadRoutine(_In_ PVOID context);
 extern "C" NTSTATUS
 DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath)
 {
+  DriverObject->DriverUnload = NotificationUnload;
+
   UNREFERENCED_PARAMETER(RegistryPath);
 
   KdPrint(("DriverEntry\n"));
-  DriverObject->DriverUnload = NotificationUnload;
 
   UNICODE_STRING ObjectNames[] = {
     RTL_CONSTANT_STRING(L"\\KernelObjects\\HighMemoryCondition"),
@@ -90,6 +91,9 @@ _Function_class_(KSTART_ROUTINE) void EventThreadRoutine(_In_ PVOID context)
 {
   UNICODE_STRING* name = static_cast<UNICODE_STRING*>(context);
 
+  if (name == nullptr)
+    KdPrint(("name invalid: %wZ\n", name));
+
   KdPrint(("Routine: %wZ\n", name));
 
   while (!g_IsDriverUnloading) {
@@ -102,7 +106,13 @@ _Function_class_(KSTART_ROUTINE) void EventThreadRoutine(_In_ PVOID context)
         continue;
       }
 
-      KdPrint(("%wZ event signaled!\n", name));
+      // Print each character of the UNICODE_STRING
+      KdPrint(("Event signaled! Object Name: "));
+      for (USHORT i = 0; i < name->Length / sizeof(WCHAR); ++i) {
+        KdPrint(("%C", name->Buffer[i]));
+      }
+      KdPrint(("\n"));
+
       // Do something with the signaled event
 
     } __except (EXCEPTION_EXECUTE_HANDLER) {
